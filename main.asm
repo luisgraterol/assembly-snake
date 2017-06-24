@@ -7,14 +7,14 @@
 
 
 .macro	tablero($inicio,$desp,$linea)
-		move $t1,$inicio			# El color sigue guardado en $t0
+		move $t1,$inicio			# El color sigue guardado en $s4
 		li $t2, 0				# Contador 1
 		li $t3, 2				# Contador 2 (hacia atras)
 		
 	loop:	li $t2, 0				# Vuelves a poner en 0 el contador 1
 		subi $t3, $t3, 1			# Le restas 1 al contador 2
 			
-	loop2:  sw $t0,0($t1)				# Pintas la direccion en $t1
+	loop2:  sw $s4,0($t1)				# Pintas la direccion en $t1
 		add $t1, $t1, $desp			# Le sumas el desplazamiento a $t1
 		addi $t2, $t2, 1			# Le sumas 1 al contador 1
 		blt $t2, 30, loop2
@@ -22,12 +22,47 @@
 		lw $t1, esquina
 		add $t1, $t1, $linea			# Bajas la direccion a pintar una linea?
 		bnez $t3, loop
-.end_macro			 
+.end_macro	
+
+.macro fruta()
+	random:
+		li $v0,42
+		li $a1,3564
+		syscall
+		
+		addi $a0,$a0,132
+		move $t7,$a0
+		li $t6,128
+		div $t7,$t6
+		mfhi $t6
+		ble $t6,8,random
+		bge $t6,120,random
+		li $t6,4
+		div $t7,$t6 
+		mfhi $t6
+		bnez $t6,random
+		add $t7, $t7, $s0
+		lw $t6,0($t7)
+		bne $t6,$zero,random
+	
+		sw $s5,0($t7)
+.end_macro
+
+.macro revisar($posComer)
+		beq $posComer,$s3,fin
+		beq $posComer,$s4,fin
+		beq $posComer,$s6,fin
+		#beq $posComer,$s5,comerFruta	
+.end_macro		 
 			 			 
 			 
 .text
+		li $s3,0x0066cc	 # blue
+		li $s4,0x00ff00	 # green	
+		li $s5,0xcc6611	 # orange
+		li $s6,0xcccccc  # grey
+		
 		# Tablero
-		li $t0, 0x651d32			# Guardamos en $t0 el color VINOTINTO
 		lw $s0, esquina				# Guardamos en $s0 la direccion de la esquina del tablero
 		li $s1, 4				# Desplazamiento para mover a la derecha
 		li $s2, 3712				# Nro. de linea
@@ -37,15 +72,14 @@
 		li $s2, 116				# Nro. de linea
 		tablero($s0,$s1,$s2)			# Pintamos los bordes verticales
 	
-	
-	
+		fruta()					# Se genera una fruta random
+		
 		# Snake
 		li $t2,0				# $t2 sera un contador
 		la $t1, 1848($s0)			# Guardamos la posicion de la esquina en $t1
-		li $t0, 0xffa300			# Guardamos en $t0 el color MOSTAZA
 		
 mover:
-		sw $t0,0($t1)				# Pintar (empieza en el medio)
+		sw $s3,0($t1)				# Pintar (empieza en el medio)
 		li $v0,30
 		syscall					# Syscall 30: Tiempo
 			
@@ -63,8 +97,8 @@ tiempo:
 		blt $a0,$s1,tiempo 
 			
 direccion:
-		sw $zero,0($t1)				# Borrar
-		
+		sw $zero,0($t1)				# Borrar				
+
 		beq $t2,1,derecha
 		beq $t2,2,izquierda
 		beq $t2,3,abajo
@@ -73,18 +107,26 @@ direccion:
 		b continuar
 		
 	derecha:				# if de direccion
-		addi $t1,$t1,4
+		lw $t4,4($t1)
+		revisar($t4)
+		addi $t1,$t1,4 
 		li $t3,1
 		b continuar
 	izquierda:
+		lw $t4,-4($t1)
+		revisar($t4)
 		addi $t1,$t1,-4
 		li $t3,2
 		b continuar
 	abajo:
+		lw $t4,128($t1)
+		revisar($t4)
 		addi $t1,$t1,128
 		li $t3,3
 		b continuar
 	arriba:
+		lw $t4,-128($t1)
+		revisar($t4)
 		addi $t1,$t1,-128
 		li $t3,4
 		b continuar
@@ -92,6 +134,8 @@ direccion:
 	continuar:
 		bne $t2,5,mover			# Para terminar o perder poner $t2 en 5
 		b fin
+	
+		
 			
 teclado:
 		la $s2, 0xffff0004
