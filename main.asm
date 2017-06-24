@@ -1,6 +1,6 @@
 .data
 		inicio:  .word 0x10010000		# Inicio del bitmap
-		esquina: .word 0x10010214		# Esquina superior izquierda
+		esquina: .word 0x10010084		# Esquina superior izquierda
 		te: 	 .word 0xffff0004		# Contiene el ultimo caracter en ser tecleado
 		tc: 	 .word 0xffff0000		# Se prende en 1 cuando se va a mandar el caracter tecleado
 			 .space 1048576			# 512 x 512 x 4 (bytes)
@@ -17,7 +17,7 @@
 	loop2:  sw $t0,0($t1)				# Pintas la direccion en $t1
 		add $t1, $t1, $desp			# Le sumas el desplazamiento a $t1
 		addi $t2, $t2, 1			# Le sumas 1 al contador 1
-		blt $t2, 22, loop2
+		blt $t2, 30, loop2
 			
 		lw $t1, esquina
 		add $t1, $t1, $linea			# Bajas la direccion a pintar una linea?
@@ -30,18 +30,18 @@
 		li $t0, 0x651d32			# Guardamos en $t0 el color VINOTINTO
 		lw $s0, esquina				# Guardamos en $s0 la direccion de la esquina del tablero
 		li $s1, 4				# Desplazamiento para mover a la derecha
-		li $s2, 2816				# Nro. de linea
+		li $s2, 3712				# Nro. de linea
 		tablero($s0,$s1,$s2)			# Pintamos los bordes horizontales
 	
 		li $s1, 128				# Desplazamiento para mover hacia abajo
-		li $s2, 84				# Nro. de linea
+		li $s2, 116				# Nro. de linea
 		tablero($s0,$s1,$s2)			# Pintamos los bordes verticales
 	
 	
 	
 		# Snake
 		li $t2,0				# $t2 sera un contador
-		la $t1, 1448($s0)			# Guardamos la posicion de la esquina en $t1
+		la $t1, 1848($s0)			# Guardamos la posicion de la esquina en $t1
 		li $t0, 0xffa300			# Guardamos en $t0 el color MOSTAZA
 		
 mover:
