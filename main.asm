@@ -1,22 +1,28 @@
 .data
+		# Bitmap
 		inicio:  .word 0x10010000		# Inicio del bitmap
 		esquina: .word 0x10010084		# Esquina superior izquierda
-		te: 	 .word 0xffff0004		# Contiene el ultimo caracter en ser tecleado
-		tc: 	 .word 0xffff0000		# Se prende en 1 cuando se va a mandar el caracter tecleado
-			 .space 1048576			# 512 x 512 x 4 (bytes)
-
-
-.macro	tablero($inicio,$desp,$linea)
-		move $t1,$inicio			# El color sigue guardado en $s4
-		li $t2, 0				# Contador 1
-		li $t3, 2				# Contador 2 (hacia atras)
+			 	 .space 1048576			# 512 x 512 x 4 (bytes)
 		
-	loop:	li $t2, 0				# Vuelves a poner en 0 el contador 1
-		subi $t3, $t3, 1			# Le restas 1 al contador 2
+		# Colores
+		snake: 	 .word 0x0066cc	 		# azul
+		pared: 	 .word 0x69e569	 		# verde	
+		fruta: 	 .word 0xcc6611	 		# anaranjado
+		roca:    .word 0xcccccc  		# gris
+
+	    # Macro: Pinta el tablero
+.macro  tablero($inicio,$desp,$linea)
+		lw $s3,pared					# Guardamos el color de la pared
+		move $t1,$inicio				
+		li $t2, 0						# Contador 1
+		li $t3, 2						# Contador 2 (hacia atras)
+		
+loop:	li $t2, 0						# Vuelves a poner en 0 el contador 1
+		subi $t3, $t3, 1				# Le restas 1 al contador 2
 			
-	loop2:  sw $s4,0($t1)				# Pintas la direccion en $t1
-		add $t1, $t1, $desp			# Le sumas el desplazamiento a $t1
-		addi $t2, $t2, 1			# Le sumas 1 al contador 1
+loop2:  sw $s3,0($t1)					# Pintas la direccion en $t1
+		add $t1, $t1, $desp				# Le sumas el desplazamiento a $t1
+		addi $t2, $t2, 1				# Le sumas 1 al contador 1
 		blt $t2, 30, loop2
 			
 		lw $t1, esquina
@@ -24,8 +30,9 @@
 		bnez $t3, loop
 .end_macro	
 
-.macro fruta()
-	random:
+	   	# Macro: Pinta una fruta o roca en un lugar aleatorio del tablero
+.macro 	generarObjeto($color)
+random:
 		li $v0,42
 		li $a1,3564
 		syscall
@@ -45,46 +52,66 @@
 		lw $t6,0($t7)
 		bne $t6,$zero,random
 	
-		sw $s5,0($t7)
+		sw $color,0($t7)
 .end_macro
 
-.macro revisar($posComer)
+	   	# Macro: Revisa el cuadro a comer
+.macro 	revisar($posComer)
+		lw $s3, snake
 		beq $posComer,$s3,fin
-		beq $posComer,$s4,fin
-		beq $posComer,$s6,fin
-		#beq $posComer,$s5,comerFruta	
+		lw $s3, pared
+		beq $posComer,$s3,fin
+		lw $s3, roca
+		beq $posComer,$s3,fin
+		lw $s3, fruta
+		#beq $posComer,$s3,comerFruta	
 .end_macro		 
-			 			 
-			 
+
+.macro  sumarPuntos()
+.end_macro 	
+
+.macro  borrarTablero()
+		lw $t0, inicio
+loop3:	addi $t0,$t0,4
+		lw $t6, 0($t0)
+		li $s3, 0
+		beq $t6, $s3, loop3
+		lw $s3, snake
+		beq $t6, $s3, loop3
+		lw $s3, pared
+		beq $t6, $s3, loop3
+		sw $zero,0($t0)						# Borrar
+		ble $t0,268505088, loop3
+.end_macro
+	 	 
 .text
-		li $s3,0x0066cc	 # blue
-		li $s4,0x00ff00	 # green	
-		li $s5,0xcc6611	 # orange
-		li $s6,0xcccccc  # grey
 		
 		# Tablero
-		lw $s0, esquina				# Guardamos en $s0 la direccion de la esquina del tablero
-		li $s1, 4				# Desplazamiento para mover a la derecha
-		li $s2, 3712				# Nro. de linea
-		tablero($s0,$s1,$s2)			# Pintamos los bordes horizontales
+		lw $s0, esquina						# Guardamos en $s0 la direccion de la esquina del tablero
+		li $s1, 4							# Desplazamiento para mover a la derecha
+		li $s2, 3712						# Nro. de linea
+		tablero($s0,$s1,$s2)				# Pintamos los bordes horizontales
 	
-		li $s1, 128				# Desplazamiento para mover hacia abajo
-		li $s2, 116				# Nro. de linea
-		tablero($s0,$s1,$s2)			# Pintamos los bordes verticales
-	
-		fruta()					# Se genera una fruta random
+		li $s1, 128							# Desplazamiento para mover hacia abajo
+		li $s2, 116							# Nro. de linea
+		tablero($s0,$s1,$s2)				# Pintamos los bordes verticales
+		
+		lw $s3,fruta
+		generarObjeto($s3)
+		borrarTablero()
 		
 		# Snake
-		li $t2,0				# $t2 sera un contador
-		la $t1, 1848($s0)			# Guardamos la posicion de la esquina en $t1
+		li $t2,0							# $t2 sera un contador
+		la $t1, 1848($s0)					# Guardamos la posicion de la esquina en $t1
 		
 mover:
-		sw $s3,0($t1)				# Pintar (empieza en el medio)
+		lw $s3, snake
+		sw $s3,0($t1)						# Pintar (empieza en el medio)
 		li $v0,30
-		syscall					# Syscall 30: Tiempo
+		syscall								# Syscall 30: Tiempo
 			
-		move $s1,$a0				# Guardamos el tiempo en $s1
-		addi $s1,$s1,1000			# Le sumamos un segundo a $s1	
+		move $s1,$a0						# Guardamos el tiempo en $s1
+		addi $s1,$s1,1000					# Le sumamos un segundo a $s1	
 			
 tiempo:
 		la $t5, 0xffff0000
@@ -92,12 +119,12 @@ tiempo:
 		bnez $t5,teclado
 			
 		li $v0,30
-		syscall					# Syscall 30: Tiempo
+		syscall								# Syscall 30: Tiempo
 			
 		blt $a0,$s1,tiempo 
 			
 direccion:
-		sw $zero,0($t1)				# Borrar				
+		sw $zero,0($t1)						# Borrar				
 
 		beq $t2,1,derecha
 		beq $t2,2,izquierda
@@ -106,7 +133,7 @@ direccion:
 		
 		b continuar
 		
-	derecha:				# if de direccion
+	derecha:								# if de direccion
 		lw $t4,4($t1)
 		revisar($t4)
 		addi $t1,$t1,4 
@@ -132,7 +159,7 @@ direccion:
 		b continuar
 		
 	continuar:
-		bne $t2,5,mover			# Para terminar o perder poner $t2 en 5
+		bne $t2,5,mover						# Para terminar o perder poner $t2 en 5
 		b fin
 	
 		
@@ -150,7 +177,7 @@ teclado:
 		li $t2,4
 		beq $s2,119,direccion	# 119 es W, arriba
 		
-		move $t2,$t3		# ultima direccion escrita
+		move $t2,$t3			# ultima direccion escrita
 		b tiempo
 
 fin:   
