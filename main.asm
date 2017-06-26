@@ -104,15 +104,26 @@ random:
 	norevisar:
 .end_macro		 	
 
-.macro  borrarTablero()
+.macro  limpiarTablero()
 		lw $t6, esquina
-	loop3:	addi $t6,$t6,4
+loop3:	addi $t6,$t6,4
 		lw $t7, 0($t6)
 		li $s3, 0								# 0 se refiere al color negro.
 		beq $t7, $s3, loop3
 		lw $s3, snake
 		beq $t7, $s3, loop3
 		lw $s3, pared
+		beq $t7, $s3, loop3
+		sw $zero,0($t6)								# Borrar
+		ble $t6,268505088, loop3
+.end_macro
+
+.macro  borrarTablero()
+		lw $t6, esquina
+		addi $t6,$t6,-4
+loop3:	addi $t6,$t6,4
+		lw $t7, 0($t6)
+		li $s3, 0									# 0 se refiere al color negro.
 		beq $t7, $s3, loop3
 		sw $zero,0($t6)								# Borrar
 		ble $t6,268505088, loop3
@@ -158,7 +169,7 @@ mover:
 		# bne $s7, 10, tiempo					# Si han pasado 10 segundos no hace el branch
 		
 		# li $s7,0						# Vuelves a poner en 0 el contador del tiempo
-		# borrarTablero()
+		# limpiarTablero()
 		# lw $s3, fruta
 		# generarObjeto($s3)
 		# lw $s3, roca
@@ -261,7 +272,8 @@ terminar:
 		
 		li $v0,5
 		syscall
-		# borrarTablero()			Esta mala borra todo y no genera la fruta luego solo hace la cabeza
+		
+		borrarTablero()
 		li $t6,1
 		beq $v0,$t6,volver
 		
