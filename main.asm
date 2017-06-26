@@ -1,6 +1,6 @@
 #
 #			PROYECTO 1
-#	Version 0.3
+#	Version 1.0
 #	Organizacion del Computador
 #	Autores: Santiago Lossada
 #			 Luis Graterol
