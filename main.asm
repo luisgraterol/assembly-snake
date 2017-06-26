@@ -2,27 +2,28 @@
 #			PROYECTO 1
 #	Version 0.3
 #	Organizacion del Computador
-#	Autores: 	Santiago Lossada
-#			Luis Graterol
+#	Autores: Santiago Lossada
+#			 Luis Graterol
 #	
 #			LEYENDA
 #	$s0 = Vidas
 #	$s1 = Tiempo
 #	$s2 = Puntos Acumulados
 #	$s3 = Color
-#	$s4 = Puntos a Sumar
+#	$s4 = Longitud de la Culebra
 #	$s5 = Multiplo de Puntuacion
 #	$s6 = Nro. de ms entre cada movimiento (Velocidad)
 #	$s7 = Contador del tiempo
 #
-#	$t0 = Posicion a pintar
+#	$t0 = Posicion a pintar (Cabeza)
 #	$t1 = Ultimo dato ingresado
 #	$t2 = Direccion del proximo movimiento
 #	$t3 = Direccion del ultimo movimiento
 #	$t4 = Posicion delante de $t1
 #	$t5 = Longitud del Snake
-#	$t6 = Direccion de la esquina del tablero y otros usos
+#	$t6 = Direccion de la esquina del tablero
 #	$t7 = Multiples usos
+#	$t9 = Cola
 #
 .data
 		# Bitmap
@@ -99,8 +100,8 @@ random:
 		lw $s3, fruta
 		bne $posComer,$s3,norevisar					# Si la posicion a comer no tiene el color de la fruta,
 													# entonces se salta al final de la macro y no se revisa
-		mul $s4, $s5, 10							# Los puntos a sumar ($s4) se obtienen multiplicando el multiplo de puntuacion ($s5) * 10
-		add $s2, $s2, $s4							# En $s2 se acumulan los puntos ganados en la partida actual
+		mul $t7, $s5, 10							# Los puntos a sumar ($t7) se obtienen multiplicando el multiplo de puntuacion ($s5) * 10
+		add $s2, $s2, $t7							# En $s2 se acumulan los puntos ganados en la partida actual
 		generarObjeto($s3)							# En $s3 esta todavia el color de la fruta
 		
 	norevisar:
@@ -159,7 +160,8 @@ volver:
 		lw $s3, roca
 		generarObjeto($s3)
 		lw $t6, esquina						# Guardamos en $t6 la direccion de la esquina del tablero
-		la $t0, 1848($t6)					# Guardamos la posicion de la esquina en $t0
+		la $t0, 1848($t6)					# Guardamos la posicion central en $t0
+		move $t9, $t0						# La cola empieza en el mismo lugar que la cabeza
 		
 mover:
 		lw $s3, snake
