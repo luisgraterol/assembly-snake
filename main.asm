@@ -2,11 +2,11 @@
 #			PROYECTO 1
 #	Version 0.3
 #	Organizacion del Computador
-#	Autores: Santiago Lossada
-#			 Luis Graterol
+#	Autores: 	Santiago Lossada
+#			Luis Graterol
 #	
 #			LEYENDA
-#	$s0 = Direccion de la esquina del tablero
+#	$s0 = Vidas
 #	$s1 = Tiempo
 #	$s2 = Puntos Acumulados
 #	$s3 = Color
@@ -21,12 +21,13 @@
 #	$t3 = Direccion del ultimo movimiento
 #	$t4 = Posicion delante de $t1
 #	$t5 = Longitud del Snake
-#	
+#	$t6 = Direccion de la esquina del tablero
+#
 .data
 		# Bitmap
 		inicio:  .word 0x10010000		# Inicio del bitmap
 		esquina: .word 0x10010084		# Esquina superior izquierda
-			 	 .space 1048576			# 512 x 512 x 4 (bytes)
+			 .space 1048576			# 512 x 512 x 4 (bytes)
 		
 		# Colores
 		snake: 	 .word 0x0066cc	 		# Azul
@@ -37,6 +38,7 @@
 		# Strings
 		puntaje: .asciiz "El juego a terminado. Su puntaje final fue de: "
 		gracias: .asciiz " puntos\nGracias por jugar!\n"
+		volver_jugar: .asciiz "Desea volver a jugar?\nIntroduzca '1' para volver a jugar:\n"
 		
 	    # Macro: Pinta el tablero
 .macro  tablero($desp,$linea)
@@ -45,10 +47,10 @@
 		li $t2, 0					# Contador 1
 		li $t3, 2					# Contador 2 (hacia atras)
 		
-loop:	li $t2, 0						# Vuelves a poner en 0 el contador 1
+	loop:	li $t2, 0						# Vuelves a poner en 0 el contador 1
 		subi $t3, $t3, 1				# Le restas 1 al contador 2
 			
-loop2:  sw $s3,0($t1)						# Pintas la direccion en $t1
+	loop2:  sw $s3,0($t1)						# Pintas la direccion en $t1
 		add $t1, $t1, $desp				# Le sumas el desplazamiento a $t1
 		addi $t2, $t2, 1				# Le sumas 1 al contador 1
 		blt $t2, 30, loop2
@@ -76,7 +78,8 @@ random:
 		div $t7,$t6 
 		mfhi $t6
 		bnez $t6,random
-		add $t7, $t7, $s0
+		lw $t8,esquina
+		add $t7, $t7, $t8
 		lw $t6,0($t7)
 		bne $t6,$zero,random
 	
@@ -86,11 +89,11 @@ random:
 	   	# Macro: Revisa el cuadro a comer
 .macro 	revisar($posComer)
 		lw $s3, snake
-		beq $posComer,$s3,terminar
+		beq $posComer,$s3,quitarvida
 		lw $s3, pared
-		beq $posComer,$s3,terminar
+		beq $posComer,$s3,quitarvida
 		lw $s3, roca
-		beq $posComer,$s3,terminar
+		beq $posComer,$s3,quitarvida
 		lw $s3, fruta
 		bne $posComer,$s3,norevisar						# Si la posicion a comer no tiene el color de la fruta,
 											# entonces se salta al final de la macro y no se revisa
@@ -102,8 +105,8 @@ random:
 .end_macro		 	
 
 .macro  borrarTablero()
-		lw $t6, inicio
-loop3:	addi $t6,$t6,4
+		lw $t6, esquina
+	loop3:	addi $t6,$t6,4
 		lw $t7, 0($t6)
 		li $s3, 0								# 0 se refiere al color negro.
 		beq $t7, $s3, loop3
@@ -119,8 +122,9 @@ loop3:	addi $t6,$t6,4
 
 
 .text		
+volver:
 		# Tablero
-		lw $s0, esquina						# Guardamos en $s0 la direccion de la esquina del tablero
+		# lw $t6, esquina						# Guardamos en $t6 la direccion de la esquina del tablero
 		li $s1, 4						# Desplazamiento para mover a la derecha
 		li $s2, 3712						# Nro. de linea
 		tablero($s1,$s2)					# Pintamos los bordes horizontales
@@ -136,9 +140,11 @@ loop3:	addi $t6,$t6,4
 		li $s6, 1000						#				la velocidad en 1000 (ms)
 		li $s7, 0						# 				el contador del tiempo en 0
 		li $t2,0						# $t2 sera un contador
-		la $t0, 1848($s0)					# Guardamos la posicion de la esquina en $t1
+		li $s0,3						# Se inicializan las vidas
 		lw $s3, fruta
 		generarObjeto($s3)					# Generamos la primera fruta
+		lw $t6, esquina						# Guardamos en $t6 la direccion de la esquina del tablero
+		la $t0, 1848($t6)					# Guardamos la posicion de la esquina en $t0
 		
 mover:
 		lw $s3, snake
@@ -166,7 +172,7 @@ mover:
 tiempo:
 		la $t5, 0xffff0000
 		lw $t5, 0($t5)
-		bnez $t5,teclado
+		bnez $t5,teclado 
 			
 		li $v0,30
 		syscall							# Syscall 30: Tiempo
@@ -229,6 +235,14 @@ teclado:
 		move $t2,$t3			# Ultima direccion escrita
 		b tiempo
 
+quitarvida:
+		addi $s0,$s0,-1
+		lw $t6,esquina
+		la $t0, 1848($t6)
+		li $t2,0
+		li $t3,0
+		bnez $s0,mover
+
 terminar:
 		li $v0, 4
 		la $a0, puntaje
@@ -241,7 +255,16 @@ terminar:
 		li $v0, 4
 		la $a0, gracias
 		syscall
-
+		
+		la $a0, volver_jugar
+		syscall
+		
+		li $v0,5
+		syscall
+		# borrarTablero()			Esta mala borra todo y no genera la fruta luego solo hace la cabeza
+		li $t6,1
+		beq $v0,$t6,volver
+		
 fin:   
 	li $v0, 10
 	syscall
