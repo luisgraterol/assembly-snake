@@ -21,13 +21,14 @@
 #	$t3 = Direccion del ultimo movimiento
 #	$t4 = Posicion delante de $t1
 #	$t5 = Longitud del Snake
-#	$t6 = Direccion de la esquina del tablero
+#	$t6 = Direccion de la esquina del tablero y otros usos
+#	$t7 = Multiples usos
 #
 .data
 		# Bitmap
 		inicio:  .word 0x10010000		# Inicio del bitmap
 		esquina: .word 0x10010084		# Esquina superior izquierda
-			 .space 1048576			# 512 x 512 x 4 (bytes)
+			 	 .space 1048576			# 512 x 512 x 4 (bytes)
 		
 		# Colores
 		snake: 	 .word 0x0066cc	 		# Azul
@@ -36,27 +37,28 @@
 		roca:    .word 0xcccccc  		# Gris
 		
 		# Strings
-		puntaje: .asciiz "El juego a terminado. Su puntaje final fue de: "
-		gracias: .asciiz " puntos\nGracias por jugar!\n"
-		volver_jugar: .asciiz "Desea volver a jugar?\nIntroduzca '1' para volver a jugar:\n"
+		seguir:  		.asciiz "Presione cualquier tecla de direccion para continuar: "
+		puntaje: 		.asciiz "El juego a terminado. Su puntaje final fue de: "
+		gracias: 		.asciiz " puntos\nGracias por jugar!\n"
+		volver_jugar: 	.asciiz "Desea volver a jugar?\nIntroduzca '1' para volver a jugar:\n"
 		
 	    # Macro: Pinta el tablero
 .macro  tablero($desp,$linea)
 		lw $s3,pared					# Guardamos el color de la pared
 		lw $t1,esquina				
-		li $t2, 0					# Contador 1
-		li $t3, 2					# Contador 2 (hacia atras)
+		li $t2, 0						# Contador 1
+		li $t3, 2						# Contador 2 (hacia atras)
 		
-	loop:	li $t2, 0						# Vuelves a poner en 0 el contador 1
+loop:	li $t2, 0						# Vuelves a poner en 0 el contador 1
 		subi $t3, $t3, 1				# Le restas 1 al contador 2
 			
-	loop2:  sw $s3,0($t1)						# Pintas la direccion en $t1
+loop2:  sw $s3,0($t1)					# Pintas la direccion en $t1
 		add $t1, $t1, $desp				# Le sumas el desplazamiento a $t1
 		addi $t2, $t2, 1				# Le sumas 1 al contador 1
 		blt $t2, 30, loop2
 			
 		lw $t1, esquina
-		add $t1, $t1, $linea				# Bajas la direccion a pintar una linea?
+		add $t1, $t1, $linea			# Bajas la direccion a pintar una linea?
 		bnez $t3, loop
 .end_macro	
 
@@ -95,8 +97,8 @@ random:
 		lw $s3, roca
 		beq $posComer,$s3,quitarvida
 		lw $s3, fruta
-		bne $posComer,$s3,norevisar						# Si la posicion a comer no tiene el color de la fruta,
-											# entonces se salta al final de la macro y no se revisa
+		bne $posComer,$s3,norevisar					# Si la posicion a comer no tiene el color de la fruta,
+													# entonces se salta al final de la macro y no se revisa
 		mul $s4, $s5, 10							# Los puntos a sumar ($s4) se obtienen multiplicando el multiplo de puntuacion ($s5) * 10
 		add $s2, $s2, $s4							# En $s2 se acumulan los puntos ganados en la partida actual
 		generarObjeto($s3)							# En $s3 esta todavia el color de la fruta
@@ -106,27 +108,27 @@ random:
 
 .macro  limpiarTablero()
 		lw $t6, esquina
+		li $t8, 0
+		addi $t6,$t6,-4
 loop3:	addi $t6,$t6,4
+		addi $t8, $t8, 1
 		lw $t7, 0($t6)
-		li $s3, 0								# 0 se refiere al color negro.
-		beq $t7, $s3, loop3
 		lw $s3, snake
 		beq $t7, $s3, loop3
 		lw $s3, pared
 		beq $t7, $s3, loop3
 		sw $zero,0($t6)								# Borrar
-		ble $t6,268505088, loop3
+		ble $t8,1024, loop3
 .end_macro
 
 .macro  borrarTablero()
 		lw $t6, esquina
+		li $t7, 0
 		addi $t6,$t6,-4
 loop3:	addi $t6,$t6,4
-		lw $t7, 0($t6)
-		li $s3, 0									# 0 se refiere al color negro.
-		beq $t7, $s3, loop3
+		addi $t7, $t7, 1
 		sw $zero,0($t6)								# Borrar
-		ble $t6,268505088, loop3
+		ble $t7,1024, loop3
 .end_macro
 
 
@@ -135,50 +137,55 @@ loop3:	addi $t6,$t6,4
 .text		
 volver:
 		# Tablero
-		# lw $t6, esquina						# Guardamos en $t6 la direccion de la esquina del tablero
-		li $s1, 4						# Desplazamiento para mover a la derecha
+		# lw $t6, esquina					# Guardamos en $t6 la direccion de la esquina del tablero
+		li $s1, 4							# Desplazamiento para mover a la derecha
 		li $s2, 3712						# Nro. de linea
 		tablero($s1,$s2)					# Pintamos los bordes horizontales
 	
-		li $s1, 128						# Desplazamiento para mover hacia abajo
-		li $s2, 116						# Nro. de linea
+		li $s1, 128							# Desplazamiento para mover hacia abajo
+		li $s2, 116							# Nro. de linea
 		tablero($s1,$s2)					# Pintamos los bordes verticales
 		
 		
 		# Snake
-		li $s2, 0						# Se inicializa el puntaje en 0
-		li $s5, 1						# 				el multiplo de puntuacion en 1
+		li $s2, 0							# Se inicializa el puntaje en 0
+		li $s0, 3							# Se inicializan las vidas
+		li $s5, 10							# 				el multiplo de puntuacion en 1
 		li $s6, 1000						#				la velocidad en 1000 (ms)
-		li $s7, 0						# 				el contador del tiempo en 0
-		li $t2,0						# $t2 sera un contador
-		li $s0,3						# Se inicializan las vidas
+		li $s7, 0							# 				el contador del tiempo en 0
+		li $t2, 0							# $t2 sera un contador
 		lw $s3, fruta
 		generarObjeto($s3)					# Generamos la primera fruta
+		lw $s3, roca
+		generarObjeto($s3)
 		lw $t6, esquina						# Guardamos en $t6 la direccion de la esquina del tablero
 		la $t0, 1848($t6)					# Guardamos la posicion de la esquina en $t0
 		
 mover:
 		lw $s3, snake
-		sw $s3,0($t0)						# Pintar (empieza en el medio)
+		sw $s3,0($t0)							# Pintar (empieza en el medio)
+		
 		li $v0,30
-		syscall							# Syscall 30: Tiempo
+		syscall									# Syscall 30: Tiempo
 			
-		move $s1,$a0						# Guardamos el tiempo en $s1
-		add $s1,$s1,$s6						# Le sumamos el tiempo entre cada movimiento a $s1
-		# addi $s7, $s7, 1
-		# bne $s7, 10, tiempo					# Si han pasado 10 segundos no hace el branch
+		move $s1,$a0							# Guardamos el tiempo en $s1
+		add $s1,$s1,$s6							# Le sumamos el tiempo entre cada movimiento a $s1
 		
-		# li $s7,0						# Vuelves a poner en 0 el contador del tiempo
-		# limpiarTablero()
-		# lw $s3, fruta
-		# generarObjeto($s3)
-		# lw $s3, roca
-		# generarObjeto($s3)
 		
-		# li $t6, 10
-		# mul $t6, $t6, $s6
-		# blt	$t6, 2, tiempo					# 0.2 es la maxima velocidad
-		# div $s6, $s6, 5					# Se disminuye el tiempo entre cada movimiento a 1/5 de lo que era anteriormente
+		addi $s7, $s7, 1
+		bne $s7, 10, tiempo						# Si han pasado 10 segundos no hace el branch
+		
+		li $s7,0								# Vuelves a poner en 0 el contador del tiempo
+		limpiarTablero()
+		lw $s3, fruta
+		generarObjeto($s3)
+		lw $s3, roca
+		generarObjeto($s3)
+		
+		addi $s5, $s5, 2
+		
+		ble	$s6, 200, tiempo					# 200 ms es la maxima velocidad
+		addi $s6, $s6, -200						# Se disminuye el tiempo en 200 ms cada 10 segundos
 			
 tiempo:
 		la $t5, 0xffff0000
@@ -203,7 +210,7 @@ direccion:
 	derecha:			# If de direccion
 		lw $t4,4($t0)
 		revisar($t4)
-		addi $t0,$t0,4 
+		addi $t0,$t0,4
 		li $t3,1
 		b continuar
 	izquierda:
@@ -243,15 +250,50 @@ teclado:
 		li $t2,4
 		beq $t1,119,direccion		# 119 es W, arriba
 		
-		move $t2,$t3			# Ultima direccion escrita
+		beq $t1,112,pausar			# 112 es P, pausa
+		
+		move $t2,$t3				# Ultima direccion escrita
 		b tiempo
+
+pausar:
+		li $v0, 4
+		la $a0, seguir
+		syscall
+		
+		li $v0, 12
+		syscall
+		
+		sw $zero,0($t0)				# Borrar
+		
+		li $t2,1
+		beq $v0, 100, derecha		# 100 es D, derecha
+		li $t2,2
+		beq $v0, 97, izquierda		# 97 es A, izquierda
+		li $t2,3
+		beq $v0, 115, abajo			# 115 es S, abajo
+		li $t2,4
+		beq $v0, 119, arriba		# 119 es W, arriba
+		
+		move $t2,$t3				# Ultima direccion escrita
+		b tiempo
+
+
 
 quitarvida:
 		addi $s0,$s0,-1
+		beqz $s0,terminar
+		limpiarTablero()
+		lw $s3, fruta
+		generarObjeto($s3)
+		lw $s3, roca
+		generarObjeto($s3)
+		
 		lw $t6,esquina
 		la $t0, 1848($t6)
-		li $t2,0
-		li $t3,0
+		li $t2, 0
+		li $t3, 0
+		li $s5, 10
+		li $s6, 1000
 		bnez $s0,mover
 
 terminar:
