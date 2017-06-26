@@ -1,6 +1,6 @@
 #
 #			PROYECTO 1
-#	Version 1.0
+#	Version 1.2
 #	Organizacion del Computador
 #	Autores: Santiago Lossada
 #			 Luis Graterol
@@ -37,6 +37,8 @@
 		pared: 	 .word 0x69e569	 		# Verde	
 		fruta: 	 .word 0xcc6611	 		# Anaranjado
 		roca:    .word 0xcccccc  		# Gris
+		vida:	 .word 0xf7ff63			# Amarillo
+		slow:    .word 0xff00a1			# Morado
 		
 		# Strings
 		seguir:  		.asciiz "Presione cualquier tecla de direccion para continuar: "
@@ -108,6 +110,14 @@ random:
 		li $t7, 0x00ffffff
 		and $posComer, $posComer, $t7
 		beq $posComer,$s3,quitarvida
+		lw $s3, vida
+		bne $posComer,$s3,noesVida
+		addi $s0,$s0,1
+	noesVida:
+		lw $s3, slow
+		bne $posComer,$s3,noesSlow
+		addi $s6,$s6,400
+	noesSlow:
 		lw $s3, fruta
 		bne $posComer,$s3,norevisar					# Si la posicion a comer no tiene el color de la fruta,
 		
@@ -224,15 +234,34 @@ revisar:	blt $a0, $s7, tiempo
 incrementar:	
 		mul $t7, $s5, 10							# Los puntos a sumar ($t7) se obtienen multiplicando el multiplo de puntuacion ($s5) * 10
 		add $s2, $s2, $t7
-		li $s7,0								# Vuelves a poner en 0 el contador del tiempo
+		li $s7, 0								# Vuelves a poner en 0 el contador del tiempo
 		limpiarTablero()
+		addi $s5, $s5, 2
+		add $t5,$s5,-10
+		div $t5,$t5,2
+		li $t8,3
+		div $t5, $t8
+		mfhi $t7
+		bnez $t7,noVida
+		lw $s3, vida
+		generarObjeto($s3)
+	noVida:
+		li $t8,5
+		div $t5, $t8
+		mfhi $t7
+		bnez $t7,noSlow
+		lw $s3, slow
+		generarObjeto($s3)		
+	noSlow:
+	loop4:
 		lw $s3, fruta
 		generarObjeto($s3)
 		lw $s3, roca
 		generarObjeto($s3)
+		addi $t5,$t5,-1
+		bge $t5,0,loop4
 		
-		addi $s5, $s5, 2
-		
+		li $t5,0
 		ble $s6, 200, tiempo					# 200 ms es la maxima velocidad
 		addi $s6, $s6, -200						# Se disminuye el tiempo en 200 ms cada 10 segundos
 			
